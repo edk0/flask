@@ -40,6 +40,13 @@ from .templating import DispatchingJinjaLoader, Environment, \
     _default_template_ctx_processor
 from .wrappers import Request, Response
 
+try:
+    from .asgi import ASGIMixin
+    from .wrappers import ASGIRequest, ASGIResponse
+except (ImportError, SyntaxError):
+    class ASGIMixin(object): pass
+    ASGIRequest = ASGIResponse = None
+
 # a singleton sentinel value for parameter defaults
 _sentinel = object()
 
@@ -67,7 +74,7 @@ def setupmethod(f):
     return update_wrapper(wrapper_func, f)
 
 
-class Flask(_PackageBoundObject):
+class Flask(_PackageBoundObject, ASGIMixin):
     """The flask object implements a WSGI application and acts as the central
     object.  It is passed the name of the module or package of the
     application.  Once it is created it will act as a central registry for
@@ -169,10 +176,12 @@ class Flask(_PackageBoundObject):
     #: The class that is used for request objects.  See :class:`~flask.Request`
     #: for more information.
     request_class = Request
+    asgi_request_class = ASGIRequest
 
     #: The class that is used for response objects.  See
     #: :class:`~flask.Response` for more information.
     response_class = Response
+    asgi_response_class = ASGIResponse
 
     #: The class that is used for the Jinja environment.
     #:
@@ -569,6 +578,9 @@ class Flask(_PackageBoundObject):
         #:
         #: This is an instance of a :class:`click.Group` object.
         self.cli = cli.AppGroup(self.name)
+
+        if hasattr(self, 'asgi_handler'):
+            self.asgi_map = {'http': self.asgi_handler}
 
     @locked_cached_property
     def name(self):
@@ -1930,6 +1942,8 @@ class Flask(_PackageBoundObject):
 
         status = headers = None
 
+        response_class = self.asgi_response_class if request.asgi else self.response_class
+
         # unpack tuple returns
         if isinstance(rv, tuple):
             len_rv = len(rv)
@@ -1960,18 +1974,18 @@ class Flask(_PackageBoundObject):
             )
 
         # make sure the body is an instance of the response class
-        if not isinstance(rv, self.response_class):
+        if not isinstance(rv, response_class):
             if isinstance(rv, (text_type, bytes, bytearray)):
                 # let the response class set the status and headers instead of
                 # waiting to do it manually, so that the class can handle any
                 # special logic
-                rv = self.response_class(rv, status=status, headers=headers)
+                rv = response_class(rv, status=status, headers=headers)
                 status = headers = None
             else:
                 # evaluate a WSGI callable, or coerce a different response
                 # class to the correct type
                 try:
-                    rv = self.response_class.force_type(rv, request.environ)
+                    rv = response_class.force_type(rv, request.environ)
                 except TypeError as e:
                     new_error = TypeError(
                         '{e}\nThe view function did not return a valid'

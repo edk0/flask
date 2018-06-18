@@ -12,6 +12,11 @@
 from werkzeug.exceptions import BadRequest
 from werkzeug.wrappers import Request as RequestBase, Response as ResponseBase
 
+try:
+    from werkzeug.asgi import ASGIRequest as ASGIRequestBase, ASGIResponse as ASGIResponseBase
+except ImportError:
+    ASGIRequestBase = ASGIResponseBase = None
+
 from flask import json
 from flask.globals import current_app
 
@@ -179,6 +184,11 @@ class Request(RequestBase, JSONMixin):
             attach_enctype_error_multidict(self)
 
 
+if ASGIRequestBase:
+    class ASGIRequest(Request, ASGIRequestBase):
+        pass
+
+
 class Response(ResponseBase, JSONMixin):
     """The response object that is used by default in Flask.  Works like the
     response object from Werkzeug but is set to have an HTML mimetype by
@@ -214,3 +224,8 @@ class Response(ResponseBase, JSONMixin):
 
         # return Werkzeug's default when not in an app context
         return super(Response, self).max_cookie_size
+
+
+if ASGIResponseBase:
+    class ASGIResponse(Response, ASGIResponseBase):
+        pass
