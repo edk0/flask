@@ -17,6 +17,11 @@ from functools import update_wrapper
 from itertools import chain
 from threading import Lock
 
+try:
+    import asyncio
+except ImportError:
+    asyncio = None
+
 from werkzeug.datastructures import Headers, ImmutableDict
 from werkzeug.exceptions import BadRequest, BadRequestKeyError, HTTPException, \
     InternalServerError, MethodNotAllowed, default_exceptions

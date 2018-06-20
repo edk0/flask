@@ -185,7 +185,7 @@ class Request(RequestBase, JSONMixin):
 
 
 if ASGIRequestBase:
-    class ASGIRequest(Request, ASGIRequestBase):
+    class ASGIRequest(ASGIRequestBase, Request):
         pass
 
 
@@ -227,5 +227,5 @@ class Response(ResponseBase, JSONMixin):
 
 
 if ASGIResponseBase:
-    class ASGIResponse(Response, ASGIResponseBase):
+    class ASGIResponse(ASGIResponseBase, Response):
         pass
